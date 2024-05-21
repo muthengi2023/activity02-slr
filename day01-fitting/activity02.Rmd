@@ -56,7 +56,7 @@ In the R code chunk below titled `load-data`, you will type the code that reads 
 -   Assign this data set into a data frame named `hfi` (short for "Human Freedom Index").
 
 ```{r load-data}
-
+hfi <~ read.csv2()
 ```
 
 After doing this and viewing the loaded data, answer the following questions:
