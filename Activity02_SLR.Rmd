@@ -5,6 +5,7 @@ date: "`r Sys.Date()`"
 output: html_document
 ---
 
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
@@ -13,6 +14,10 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r setup, eval = FALSE}
 library(tidyverse)
 library(tidymodels)
+library(skimr)
+library(ggplot2)
+library(dbplyr)
+library(e1071)  # For skewness calculation
 ```
 
 #Load Data
@@ -20,4 +25,202 @@ library(tidymodels)
 hfi <-read_csv("hfi.csv")
 hfi
 ```
+## 1.  What are the dimensions of the dataset? 
+##vThere are 1458 rows and 123 columns
 
+## What does each row represent? The observations for example year, ISO_code, countries etc.
+
+```{r}
+glimpse(hfi)
+```
+
+## The dataset spans a lot of years. We are only interested in data from year 2016. In the R code chunk below titled `hfi-2016`, type the code that does the following:
+
+## -   Filter the data `hfi` data frame for year 2016, and
+##v-   Assigns the result to a data frame named `hfi_2016`.
+```{r}
+hfi_2016 <- hfi %>%
+  filter(year == 2016)
+hfi_2016
+
+```
+### 1. Identify our research question(s)
+
+## The research question is often defined by you (or your company, boss, etc.). Today's research question/goal is to predict a country's personal freedom score in 2016.
+
+## For this activity we want to explore the relationship between the personal freedom score, `pf_score`, and the political pressures and controls on media content index,`pf_expression_control`. Specifically, we are going to use the political pressures and controls on media content index to predict a country's personal freedom score in 2016.
+
+### 2. Explore the variables of interest
+#Answer the following questions (use your markdown skills) and complete the following tasks.
+
+#2.  What type of plot would you use to display the distribution of the personal freedom scores, `pf_score`? Would this be the same type of plot to display the distribution of the political pressures and controls on media content index, `pf_expression_control`?
+
+-   In the R code chunk below titled `univariable-plots`, type the R code that displays this plot for `pf_score`.
+-   In the R code chunk below titled `univariable-plots`, type the R code that displays this plot for `pf_expression_control`.
+
+```{r}
+# Plot the distribution of pf_score
+ggplot(hfi_2016, aes(x = pf_score)) +
+  geom_histogram(binwidth = 1, fill = "blue", color = "black", alpha = 0.7) +
+  labs(title = "Distribution of Personal Freedom Scores", x = "Personal Freedom Score", y = "Frequency") +
+  theme_minimal()
+
+# Plot the distribution of pf_expression_control
+ggplot(hfi_2016, aes(x = pf_expression_control)) +
+  geom_histogram(binwidth = 1, fill = "red", color = "black", alpha = 0.7) +
+  labs(title = "Distribution of Political Pressures and Controls on Media Content", x = "Political Pressures and Controls on Media Content Index", y = "Frequency") +
+  theme_minimal()
+```
+## Comment on each of these two distributions. Be sure to describe their centers, spread, shape, and any potential outliers.
+## the distribution of pf scores is left skewed and the center is at 5 while the the distribution of pf_expression_control is normally distributed, the center ist at 4 and there are no outliers.
+
+## What type of plot would you use to display the relationship between the personal freedom score, `pf_score`, and the political pressures and controls on media content index,`pf_expression_control`? A scatter plot
+## There is a linear relationship between the personal freedom score, `pf_score`, and the political pressures and controls on media content index,`pf_expression_control`
+
+```{r}
+# `relationship-plot`
+ggplot(hfi_2016, aes(x = pf_expression_control, y = pf_score)) +
+  geom_point(color = "blue", alpha = 0.6) +
+  labs(title = "Relationship between Personal Freedom Score and Political Pressures and Controls on Media Content",
+       x = "Political Pressures and Controls on Media Content Index",
+       y = "Personal Freedom Score") +
+  theme_minimal()
+```
+## 4.  Does the relationship look linear? Yes it looks linear
+## If you knew a country's `pf_expression_control`, or its score out of 10, with 0 being the most, of political pressures and controls on media content, would you be comfortable using a linear model to predict the personal freedom score? Yes
+
+#### Challenge
+
+For each plot and using your `{dplyr}` skills, obtain the appropriate numerical summary statistics and provide more detailed descriptions of these plots. For example, in (4) you were asked to comment on the center, spread, shape, and potential outliers. What measures could/should be used to describe these? You might not know of one for each of those terms.
+
+What numerical summary would you use to describe the relationship between two numerical variables? (hint: explore the `cor` function from Base R)
+
+```{r challenge}
+# Summary statistics for pf_score
+pf_score_summary <- hfi_2016 %>%
+  summarise(
+    mean = mean(pf_score, na.rm = TRUE),
+    median = median(pf_score, na.rm = TRUE),
+    sd = sd(pf_score, na.rm = TRUE),
+    IQR = IQR(pf_score, na.rm = TRUE),
+    skewness = skewness(pf_score, na.rm = TRUE),
+    min = min(pf_score, na.rm = TRUE),
+    max = max(pf_score, na.rm = TRUE)
+  )
+
+# Identifying outliers for pf_score using 1.5 * IQR rule
+Q1_pf_score <- quantile(hfi_2016$pf_score, 0.25, na.rm = TRUE)
+Q3_pf_score <- quantile(hfi_2016$pf_score, 0.75, na.rm = TRUE)
+IQR_pf_score <- Q3_pf_score - Q1_pf_score
+outliers_pf_score <- hfi %>%
+  filter(pf_score < (Q1_pf_score - 1.5 * IQR_pf_score) | pf_score > (Q3_pf_score + 1.5 * IQR_pf_score))
+
+# Summary statistics for pf_expression_control
+pf_expression_control_summary <- hfi_2016 %>%
+  summarise(
+    mean = mean(pf_expression_control, na.rm = TRUE),
+    median = median(pf_expression_control, na.rm = TRUE),
+    sd = sd(pf_expression_control, na.rm = TRUE),
+    IQR = IQR(pf_expression_control, na.rm = TRUE),
+    skewness = skewness(pf_expression_control, na.rm = TRUE),
+    min = min(pf_expression_control, na.rm = TRUE),
+    max = max(pf_expression_control, na.rm = TRUE)
+  )
+
+# Identifying outliers for pf_expression_control using 1.5 * IQR rule
+Q1_pf_expression_control <- quantile(hfi_2016$pf_expression_control, 0.25, na.rm = TRUE)
+Q3_pf_expression_control <- quantile(hfi_2016$pf_expression_control, 0.75, na.rm = TRUE)
+IQR_pf_expression_control <- Q3_pf_expression_control - Q1_pf_expression_control
+outliers_pf_expression_control <- hfi %>%
+  filter(pf_expression_control < (Q1_pf_expression_control - 1.5 * IQR_pf_expression_control) | pf_expression_control > (Q3_pf_expression_control + 1.5 * IQR_pf_expression_control))
+
+# Calculate correlation between pf_score and pf_expression_control
+correlation <- cor(hfi_2016$pf_score, hfi_2016$pf_expression_control, use = "complete.obs")
+correlation
+
+# Print results
+print(pf_score_summary)
+print(outliers_pf_score)
+print(pf_expression_control_summary)
+print(outliers_pf_expression_control)
+print(correlation)
+```
+```{r}
+print(correlation)
+```
+## The strong positive correlation coefficient of 0.8450646 indicates that personal freedom scores and political pressures and controls on media content index are strongly positively related. This suggests that in countries where personal freedoms are higher, political pressures and controls on media content are generally lower, demonstrating a significant linear relationship between these two variables. This relationship is visually supported by the scatter plot showing a clear upward trend.
+```{r}
+# Create scatter plot to visualize the relationship
+ggplot(hfi_2016, aes(x = pf_expression_control, y = pf_score)) +
+  geom_point(color = "blue", alpha = 0.6) +
+  labs(title = "Relationship between Personal Freedom Score and Political Pressures and Controls on Media Content",
+       x = "Political Pressures and Controls on Media Content Index",
+       y = "Personal Freedom Score") +
+  theme_minimal()
+```
+## Implications: The high correlation suggests that countries with higher personal freedom scores tend to have lower levels of political pressure and control on media content. This could imply that in environments where personal freedoms are respected, there is less political interference in media content.
+
+### 3. Fit a simple linear regression model
+
+## Regardless of your response to (4), we will continue fitting a simple linear regression (SLR) model to these data. The code that we will be using to fit statistical models in this course use `{tidymodels}` - an opinionated way to fit models in R - and this is likely new to most of you. I will provide you with example code when I do not think you should know what to do - i.e., anything `{tidymodels}` related.
+
+## To begin, we will create a `{parsnip}` specification for a linear model.
+
+```{r parsnip-spec}
+lm_spec <- linear_reg() %>%
+  set_mode("regression") %>%
+  set_engine("lm")
+
+lm_spec
+```
+## Using this specification, we can now fit our model: $\texttt{pf\\_score} = \beta_0 + \beta_1 \times \texttt{pf\\_expression\\_control} + \varepsilon$. Note, the "\$" portion in the previous sentence is LaTeX snytex which is a math scripting (and other scripting) language. I do not expect you to know this, but you will become more comfortable with this. Look at your knitted document to see how this syntax appears.
+
+## In the code chunk below titled `fit-lm`, replace "verbatim" with "r" just before the code chunk title.
+
+```{r fit-lm}
+slr_mod <- lm_spec %>% 
+  fit(pf_score ~ pf_expression_control, data = hfi_2016)
+
+tidy(slr_mod)
+```
+## Intercept: 4.2838153 This is the estimated personal freedom score when the political pressures and controls on media content index is 0. It represents the baseline level of personal freedom when there are no political pressures or controls on media content.
+## Standard Error: 0.14897525 This indicates the variability in the estimate of the intercept. A smaller standard error suggests more precise estimation.
+## t-Statistic: 28.75521, the t-statistic for the intercept tests the null hypothesis that the intercept is zero. A large absolute t-value indicates that the intercept is significantly different from zero.
+## p-Value: 4.228325×10−65, the p-value is extremely small, suggesting that the intercept is highly statistically significant. We can reject the null hypothesis that the intercept is zero.
+##Slope- pf_expression_control): 0.5418452, this is the estimated change in the personal freedom score for each one-unit increase in the political pressures and controls on media content index. A positive estimate indicates that as political pressures and controls increase, the personal freedom score also increases.
+## Standard Error: 0.02710231, this measures the precision of the slope estimate. A smaller standard error indicates a more precise estimate.
+## t-Statistic: 19.99258, the t-statistic for the slope tests the null hypothesis that the slope is zero. A large absolute t-value suggests that the slope is significantly different from zero.
+##p-Value: 2.313214×10−45, the p-value is extremely small, indicating that the slope is highly statistically significant. We can reject the null hypothesis that the slope is zero.
+## Overall Model Interpretation: The intercept and the slope are both highly statistically significant, with p-values much smaller than the common significance level of 0.05.
+## The positive slope 0.5418452 indicates a strong positive linear relationship between pf_expression_control and pf_score. Specifically, for each one-unit increase in the political pressures and controls on media content index, the personal freedom score increases by approximately 0.542 units. Given the high t-statistics and very low p-values, we can conclude that both the intercept and the slope are significant contributors to the model, providing strong evidence of a relationship between the political pressures and controls on media content index and the personal freedom score.
+## Conclusion: The model indicates that as political pressures and controls on media content increase, personal freedom scores also increase. This might initially seem counterintuitive, but it could suggest that in contexts where there are more political pressures on media, there might be an increased effort or mechanism to ensure personal freedoms are maintained or improved. Further investigation would be necessary to understand the underlying causes of this relationship.
+
+## Using the tidy output, the estimated parameters are:
+
+## Intercept: 4.2838153
+## Slope: 0.5418452
+## Therefore, the updated formula is:
+
+##pf_score^=4.2838153 + 0.5418452 × pf_expression_control
+##pf_score = 4.2838153 + 0.5418452 × pf_expression_control this formula can now be used to predict the personal freedom score based on the value of the political pressures and controls on media content index.
+
+## Intercept 4.2838153, the intercept represents the estimated personal freedom score when the political pressures and controls on media content index (\texttt{pf_expression_control}) is 0. If there were no political pressures and controls on media content (i.e., \texttt{pf_expression_control} = 0), the personal freedom score would be approximately 4.28. This provides a baseline level of personal freedom in the absence of political pressures on media content.
+## Slope 0.5418452, the slope represents the estimated change in the personal freedom score for each one-unit increase in the political pressures and controls on media content index (\texttt{pf_expression_control}). Specifically, for every one-unit increase in the \texttt{pf_expression_control} index, the personal freedom score is expected to increase by approximately 0.542 units.
+## This positive relationship suggests that higher political pressures and controls on media content are associated with higher personal freedom scores. This might seem counterintuitive at first, but it could imply that in environments where there are more political pressures and controls on media, there could be compensatory mechanisms or efforts in place to ensure personal freedoms are maintained or improved.
+## The intercept provides a starting point for personal freedom scores in the theoretical scenario where political pressures and controls on media content are completely absent.
+## The slope indicates the direction and strength of the relationship between political pressures on media and personal freedom scores. The positive slope suggests a direct, although not necessarily causal, relationship where increasing political pressures and controls on media content correlate with increasing personal freedom scores.
+
+## Summary > For countries with a `pf_expression_control` of 0 (those with the largest amount of political pressure on media content), we expect their mean personal freedom score to be 4.28. > For every 1 unit increase in `pf_expression_control` (political pressure on media content index), we expect a country's mean personal freedom score to increase 0.542 units.
+
+### 4. Assessing
+
+#### 4.A: Assess with your Day 1 model
+
+## To assess our model fit, we can use $R^2$ (the coefficient of determination), the proportion of variability in the response variable that is explained by the explanatory variable. We use `glance` from `{broom}` (which is automatically loaded with `{tidymodels}` - `{broom}` is also where `tidy` is from) to access this information.
+
+```{r glance-mod}
+glance(slr_mod)
+```
+## 7.  What is the value of $R^2$ for this model? 0.7141342 or 71.41%
+
+## 8.  What does this value mean in the context of this model? Think about what would a "good" value of $R^2$ would be? Can/should this value be "perfect"? This means 71.41% of the variation in personal freedom scores across different countries can be accounted for by the variation in political pressures and controls on media content. This suggests that the model captures a significant portion that is 71.41% of the relationship between political pressures on media content and personal freedom scores,
