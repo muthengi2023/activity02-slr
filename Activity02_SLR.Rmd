@@ -325,4 +325,27 @@ ggplot(data = train_aug, aes(x = .pred, y = .resid)) +
   xlab("Fitted values") +
   ylab("Residuals")
 ```
+### Notice here that `train_aug` can also serve as a data set because stored within it are the fitted values ($\hat{y}$) and the residuals. Also note that we are getting fancy with the code here. After creating the scatterplot on the first layer (first line of code), we overlay a red horizontal dashed line at $y = 0$ (to help us check whether the residuals are distributed around 0), and we also rename the axis labels to be more informative.
 
+### Answer the following question:
+
+### 11. Is there any apparent pattern in the residuals plot? Pattern: Residuals are randomly scattered around the horizontal line (y = 0) and don't form any specific pattern. What does this indicate about the linearity of the relationship between the two variables? The relationship between the predictors and the response variable are not linear.
+
+### **Nearly normal residuals**: To check this condition, we can look at a histogram of the residuals.
+
+```{r fitted-residual}
+ggplot(data = train_aug, aes(x = .resid)) +
+  geom_histogram(binwidth = 0.25) +
+  xlab("Residuals")
+```
+### Answer the following question:
+
+### 12. Based on the histogram, does the nearly normal residuals condition appear to be violated? the residuals are approximately normally distributed, supporting the normality assumption.
+
+### **Constant variability**:
+
+### 13. Based on the residuals vs. fitted plot, does the constant variability condition appear to be violated? The spread (variability) of the residuals is roughly constant across all levels of fitted values. The residuals fan out as fitted values increase, the variability of the residuals is not constant.
+
+## Attribution
+
+## This document is based on labs from [OpenIntro](https://www.openintro.org/).
