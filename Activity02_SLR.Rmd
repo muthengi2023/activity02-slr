@@ -2,7 +2,10 @@
 title: "Activity02_SLR"
 author: "Maureen Muthengi"
 date: "`r Sys.Date()`"
-output: html_document
+output:
+  word_document: default
+  pdf_document: default
+  html_document: default
 ---
 
 
@@ -11,7 +14,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 #Loading Libraries
-```{r setup, eval = FALSE}
+```{r}
 library(tidyverse)
 library(tidymodels)
 library(skimr)
@@ -27,7 +30,7 @@ hfi <-read_csv("hfi.csv")
 hfi
 ```
 ## 1.  What are the dimensions of the dataset? 
-##vThere are 1458 rows and 123 columns
+## There are 1458 rows and 123 columns
 
 ## What does each row represent? The observations for example year, ISO_code, countries etc.
 
@@ -150,15 +153,7 @@ print(correlation)
 print(correlation)
 ```
 ## The strong positive correlation coefficient of 0.8450646 indicates that personal freedom scores and political pressures and controls on media content index are strongly positively related. This suggests that in countries where personal freedoms are higher, political pressures and controls on media content are generally lower, demonstrating a significant linear relationship between these two variables. This relationship is visually supported by the scatter plot showing a clear upward trend.
-```{r}
-# Create scatter plot to visualize the relationship
-ggplot(hfi_2016, aes(x = pf_expression_control, y = pf_score)) +
-  geom_point(color = "blue", alpha = 0.6) +
-  labs(title = "Relationship between Personal Freedom Score and Political Pressures and Controls on Media Content",
-       x = "Political Pressures and Controls on Media Content Index",
-       y = "Personal Freedom Score") +
-  theme_minimal()
-```
+
 ## Implications: The high correlation suggests that countries with higher personal freedom scores tend to have lower levels of political pressure and control on media content. This could imply that in environments where personal freedoms are respected, there is less political interference in media content.
 
 ### 3. Fit a simple linear regression model
@@ -333,7 +328,7 @@ ggplot(data = train_aug, aes(x = .pred, y = .resid)) +
 
 ### **Nearly normal residuals**: To check this condition, we can look at a histogram of the residuals.
 
-```{r fitted-residual}
+```{r}
 ggplot(data = train_aug, aes(x = .resid)) +
   geom_histogram(binwidth = 0.25) +
   xlab("Residuals")
